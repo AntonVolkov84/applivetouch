@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text, TextInput, StyleSheet } from "react-native";
+import React, { useState } from "react";
+import { View, Text, TextInput, StyleSheet, TouchableOpacity } from "react-native";
 import { useForm, Controller } from "react-hook-form";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -9,6 +9,7 @@ import { RootStackParamList } from "../navigation/AppNavigator";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useAlert } from "../context/AppContext";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
@@ -36,6 +37,7 @@ export default function LoginScreen({ navigation }: Props) {
     resolver: yupResolver(schema),
     defaultValues: { email: "", password: "" },
   });
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const alert = useAlert();
   const emailValue = watch("email");
   const passwordValue = watch("password");
@@ -130,16 +132,19 @@ export default function LoginScreen({ navigation }: Props) {
         name="password"
         rules={{ required: "Введите пароль" }}
         render={({ field: { onChange, value } }) => (
-          <>
+          <View style={styles.passwordContainer}>
             <TextInput
               placeholder="Пароль"
               value={value}
               onChangeText={onChange}
-              style={styles.input}
-              secureTextEntry
-            />
+              secureTextEntry={!showPassword}
+              style={styles.passwordInput}
+            ></TextInput>
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Ionicons name={showPassword ? "eye-off" : "eye"} size={24} color="gray" style={{ marginLeft: 8 }} />
+            </TouchableOpacity>
             {errors.password && <Text style={styles.error}>{errors.password.message}</Text>}
-          </>
+          </View>
         )}
       />
 
@@ -163,6 +168,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     marginBottom: 12,
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginBottom: 12,
+    justifyContent: "space-between",
+  },
+  passwordInput: {
+    width: "90%",
   },
   registerLink: {
     textAlign: "center",

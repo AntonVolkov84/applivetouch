@@ -12,3 +12,9 @@ export type UserAuthData = {
   username: string;
   usersurname: string;
 };
+export type RegisterFormData = {
+  username: string;
+  usersurname: string;
+  email: string;
+  password: string;
+};
