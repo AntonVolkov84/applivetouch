@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, StyleSheet, TouchableOpacity } from "react-native";
 import { useForm, Controller } from "react-hook-form";
-import axios from "axios";
+import { api } from "../axiosInstance";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Button from "../components/Button";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -43,7 +43,11 @@ export default function LoginScreen({ navigation }: Props) {
   const passwordValue = watch("password");
   const onSubmit = async (data: LoginFormData) => {
     try {
-      const res = await axios.post("https://api.livetouch.chat/auth/login", data);
+      const normalizedData = {
+        ...data,
+        email: data.email.trim().toLowerCase(),
+      };
+      const res = await api.post("/auth/login", normalizedData);
       const user = res.data.user;
       const accessToken = res.data.accessToken;
       const refreshToken = res.data.refreshToken;
@@ -58,7 +62,10 @@ export default function LoginScreen({ navigation }: Props) {
       });
     } catch (err: any) {
       console.error("Login error:", err.response?.data || err.message);
-      alert({ title: "Ошибка входа", message: err.response?.data?.message || "Что-то пошло не так" });
+      const message =
+        err.response?.data?.message ||
+        (err.response?.status === 401 ? "Неверный email или пароль" : "Не удалось подключиться к серверу");
+      alert({ title: "Ошибка входа", message });
     }
   };
 
@@ -72,7 +79,11 @@ export default function LoginScreen({ navigation }: Props) {
         return;
       }
       if (!passwordValue) {
-        alert({ title: "Ошибка", message: "Введите новый пароль в поле выше" });
+        alert({
+          title: "Ошибка",
+          message:
+            "Введите новый пароль в поле выше, он будет использоваться далее как основной, после перехода по ссылке на почте",
+        });
         return;
       }
       alert({
@@ -83,8 +94,8 @@ export default function LoginScreen({ navigation }: Props) {
         cancelText: "Отмена",
         onConfirm: async () => {
           try {
-            await axios.post("https://api.livetouch.chat/auth/forgot-password", {
-              email: emailValue,
+            await api.post("/auth/forgot-password", {
+              email: emailValue.toLowerCase(),
               newPassword: passwordValue,
             });
             alert({
@@ -132,19 +143,21 @@ export default function LoginScreen({ navigation }: Props) {
         name="password"
         rules={{ required: "Введите пароль" }}
         render={({ field: { onChange, value } }) => (
-          <View style={styles.passwordContainer}>
-            <TextInput
-              placeholder="Пароль"
-              value={value}
-              onChangeText={onChange}
-              secureTextEntry={!showPassword}
-              style={styles.passwordInput}
-            ></TextInput>
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <Ionicons name={showPassword ? "eye-off" : "eye"} size={24} color="gray" style={{ marginLeft: 8 }} />
-            </TouchableOpacity>
+          <>
+            <View style={styles.passwordContainer}>
+              <TextInput
+                placeholder="Пароль"
+                value={value}
+                onChangeText={onChange}
+                secureTextEntry={!showPassword}
+                style={styles.passwordInput}
+              ></TextInput>
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <Ionicons name={showPassword ? "eye-off" : "eye"} size={24} color="gray" style={{ marginLeft: 8 }} />
+              </TouchableOpacity>
+            </View>
             {errors.password && <Text style={styles.error}>{errors.password.message}</Text>}
-          </View>
+          </>
         )}
       />
 

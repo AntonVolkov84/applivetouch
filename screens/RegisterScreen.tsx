@@ -1,54 +1,73 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigator";
 import { useAlert } from "../context/AppContext";
 import Button from "../components/Button";
 import { Ionicons } from "@expo/vector-icons";
 import { RegisterFormData } from "../types";
+import { api } from "../axiosInstance";
+import { Recaptcha, RecaptchaAction, type RecaptchaClient } from "@google-cloud/recaptcha-enterprise-react-native";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Register">;
 
 const schema = yup.object({
-  username: yup.string().required("Введите имя"),
-  usersurname: yup.string().required("Введите фамилию"),
-  email: yup
+  username: yup
     .string()
-    .email("Некорректный email")
-    .required("Введите email")
-    .matches(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, "Некорректный email"),
+    .required("Введите имя")
+    .matches(/^[^<>]*$/, "Недопустимые символы: < или >"),
+  usersurname: yup
+    .string()
+    .required("Введите фамилию")
+    .matches(/^[^<>]*$/, "Недопустимые символы: < или >"),
+  email: yup.string().email("Некорректный email").required("Введите email"),
   password: yup.string().min(6, "Пароль должен быть не менее 6 символов").required("Введите пароль"),
 });
 
 export default function RegisterScreen({ navigation }: Props) {
   const {
     control,
-    handleSubmit,
+    handleSubmit: rhfSubmit,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
     resolver: yupResolver(schema),
     defaultValues: { username: "", usersurname: "", email: "", password: "" },
   });
-
   const alert = useAlert();
   const [showPassword, setShowPassword] = useState(false);
+  const siteKey = process.env.RECAPTCHA_SITE_KEY;
 
-  const onSubmit = async (data: RegisterFormData) => {
+  const sendFormToBackend = async (data: RegisterFormData, token: string) => {
     try {
-      const res = await axios.post("https://api.livetouch.chat/auth/register", data);
+      const normalizedData = { ...data, email: data.email.trim().toLowerCase(), captchaToken: token };
+      await api.post("/auth/register", normalizedData);
       alert({
         title: "Регистрация успешна",
-        message: `Письмо для подтверждения отправлено на ${data.email}.`,
+        message: `Письмо для подтверждения отправлено на ${normalizedData.email}.`,
         onConfirm: () => navigation.navigate("Login"),
       });
     } catch (err: any) {
       console.error("Register error:", err.response?.data || err.message);
       alert({ title: "Ошибка регистрации", message: err.response?.data?.message || "Что-то пошло не так" });
+    }
+  };
+
+  const onSubmitForm = async (data: RegisterFormData) => {
+    try {
+      let token;
+      if (!siteKey) {
+        alert({ title: "Ошибка", message: "Не указан ключ reCAPTCHA" });
+        return;
+      }
+      const client = await Recaptcha.fetchClient(siteKey);
+      token = await client.execute(RecaptchaAction.custom("register"));
+      await sendFormToBackend(data, token);
+    } catch (err) {
+      console.error(err);
+      alert({ title: "Ошибка", message: "Не удалось пройти проверку" });
     }
   };
 
@@ -120,10 +139,9 @@ export default function RegisterScreen({ navigation }: Props) {
 
       <Button
         title={isSubmitting ? "Загрузка..." : "Создать аккаунт"}
-        onPress={handleSubmit(onSubmit)}
+        onPress={rhfSubmit(onSubmitForm)}
         disabled={isSubmitting}
       />
-
       <TouchableOpacity onPress={() => navigation.navigate("Login")}>
         <Text style={styles.loginLink}>Уже есть аккаунт? Войти</Text>
       </TouchableOpacity>
@@ -145,10 +163,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     justifyContent: "space-between",
   },
-  inputPassword: {
-    width: "90%",
-    paddingLeft: 0,
-  },
+  inputPassword: { width: "90%", paddingLeft: 0 },
   loginLink: { textAlign: "center", marginTop: 20, color: "#007bff" },
   error: { color: "red", fontSize: 13, marginBottom: 8 },
 });
