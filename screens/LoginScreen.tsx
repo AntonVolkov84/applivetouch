@@ -82,7 +82,7 @@ export default function LoginScreen({ navigation }: Props) {
         alert({
           title: "Ошибка",
           message:
-            "Введите новый пароль в поле выше, он будет использоваться далее как основной, после перехода по ссылке на почте",
+            "Введите в поле входа ваш email и новый пароль, на указанный email будет отправлено письмо для обновления данных",
         });
         return;
       }
@@ -163,7 +163,7 @@ export default function LoginScreen({ navigation }: Props) {
 
       <Button title={isSubmitting ? "Загрузка..." : "Войти"} onPress={handleSubmit(onSubmit)} disabled={isSubmitting} />
       <Text style={styles.forgotLink} onPress={() => onForgotPassword()}>
-        Забыли пароль?
+        Восстановить пароль?
       </Text>
       <Text style={styles.registerLink} onPress={() => navigation.navigate("Register")}>
         Создать аккаунт
