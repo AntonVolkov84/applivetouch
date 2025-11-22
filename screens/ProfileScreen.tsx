@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TextInput, Image, TouchableOpacity, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  Image,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 import { api } from "../axiosInstance";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { UserAuthData } from "../types";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigator";
@@ -155,10 +165,13 @@ export default function ProfileScreen({ navigation }: Props) {
       console.log("updateProfile error:", err);
     }
   };
+  const handleLogout = async () => {
+    await AsyncStorage.multiRemove(["accessToken", "refreshToken", "user"]);
+    navigation.replace("Login");
+  };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Профиль</Text>
+    <ScrollView contentContainerStyle={styles.container}>
       {renderAvatar()}
       <TextInput maxLength={20} style={styles.input} value={username} onChangeText={setUsername} placeholder="Имя" />
       <TextInput maxLength={20} style={styles.input} value={surname} onChangeText={setSurname} placeholder="Фамилия" />
@@ -179,6 +192,9 @@ export default function ProfileScreen({ navigation }: Props) {
         placeholder="О себе..."
         multiline
       />
+      <Text style={styles.logout} onPress={() => handleLogout()}>
+        Выйти
+      </Text>
       <Button
         title="Сохранить"
         onPress={() => updateProfile()}
@@ -191,13 +207,13 @@ export default function ProfileScreen({ navigation }: Props) {
         textStyle={styles.saveText}
         containerStyle={styles.saveBtn}
       />
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   loader: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -263,7 +279,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 30,
     borderRadius: 12,
-    marginTop: 20,
+    marginTop: 10,
     width: "100%",
     alignItems: "center",
   },
@@ -272,5 +288,11 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "600",
+  },
+  logout: {
+    width: "100%",
+    color: "#007bff",
+    textAlign: "right",
+    fontSize: 20,
   },
 });
